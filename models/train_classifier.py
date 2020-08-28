@@ -1,24 +1,74 @@
 import sys
+import pandas as pd
+import numpy as np
+from sqlalchemy import create_engine
+import re
+import pickle
 
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger', 'stopwords'])
+
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix, classification_report
 
 def load_data(database_filepath):
-    pass
-
+    # load data from sql database
+    engine = create_engine('sqlite:///{}'.format(database_filepath))
+    df = pd.read_sql_table('messages', engine)
+    
+    # set x to messages
+    X = df['message'].values
+    
+    # set y to category columns
+    Y_df = df.drop(columns=['id', 'message', 'original', 'genre', 'related'])
+    Y = Y_df.values
+    category_names = Y_df.columns
+    
+    return X, Y, category_names
 
 def tokenize(text):
-    pass
-
+    words = word_tokenize(re.sub(r"[^a-zA-Z0-9]", " ", text.lower()).strip())
+    words = [w for w in words if w not in stopwords.words('english')]
+    lemmed = [WordNetLemmatizer().lemmatize(w) for w in words]
+    lemmed = [WordNetLemmatizer().lemmatize(w, 'v') for w in lemmed]
+    lemmed = [WordNetLemmatizer().lemmatize(w, 'a') for w in lemmed]
+    lemmed = [WordNetLemmatizer().lemmatize(w, 'r') for w in lemmed]
+    return lemmed
 
 def build_model():
-    pass
+    pipeline = Pipeline([
+        ('features', FeatureUnion([
+            ('nlp_pipeline', Pipeline([
+                ('vect', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer()),
+            ])),
 
+        ])),
+        ('clf', MultiOutputClassifier(RandomForestClassifier()))
+    ])
+    
+    parameters = {}
+
+    cv = GridSearchCV(pipeline, parameters)
+    
+    return cv
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    pass
-
+    Y_pred = model.predict(X_test)
+    class_report = classification_report(Y_test, Y_pred, target_names = category_names)
+    accuracy = (Y_pred, == Y_test).mean()
+    print("Classification Report:\n", class_report)
+    print("Accuracy:", accuracy)
 
 def save_model(model, model_filepath):
-    pass
+    pickle.dump(model, open(model_filepath, 'wb'))
 
 
 def main():
