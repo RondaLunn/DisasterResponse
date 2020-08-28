@@ -3,9 +3,20 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
+    '''
+    INPUT
+    messages_filepath - string containing path to the csv containing the messages
+    categories_filepath - string containing path to the csv containing the categories
+    
+    OUTPUT
+    df - pandas dataframe with messages and categories
+    '''
     # load datasets
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
+    
+    # merge datasets
+    df = messages.merge(categories, how='left', on='id')
     
     # create a dataframe of the 36 individual category columns
     categories = categories['categories'].str.split(';', expand=True)
@@ -24,6 +35,9 @@ def load_data(messages_filepath, categories_filepath):
     
     # convert column from string to numeric
         categories[column] = categories[column].astype(int)
+        
+    # drop the original categories column from `df`
+    df = df.drop(columns=['categories'])
     
     # concatenate the messages and categories dataframes
     df = pd.concat([messages, categories], axis=1)
@@ -31,11 +45,29 @@ def load_data(messages_filepath, categories_filepath):
     return df
 
 def clean_data(df):
+    '''
+    INPUT
+    df - pandas dataframe with messages and categories
+    
+    OUTPUT
+    df - pandas dataframe with messages and categories after cleaning
+    '''
+    
     # drop duplicates
     df.drop_duplicates(inplace=True)
     return df
 
 def save_data(df, database_filename):
+    '''
+    INPUT
+    df - pandas dataframe with messages and categories
+    database_filename - string, file name of the database where the dataframe will be saved
+    
+    OUTPUT
+    NONE
+    
+    Saves the dataframe to the specified database
+    '''
     engine = create_engine("sqlite:///{}".format(database_filename))
     df.to_sql('messages', engine, index=False, if_exists='replace') 
 
