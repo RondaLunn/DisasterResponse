@@ -33,10 +33,11 @@ def load_data(messages_filepath, categories_filepath):
     # set each value to be the last character of the string
         categories[column] = categories[column].str.split('-', expand=True)[1]
         
-    # some values in the related column have a value of 2, change to 1
-        categories[column] = categories[column].str.replace('2','1')
+    # replace all category column null values with 0 and any other non-binary characters with 1
+        categories[column] = categories[column].fillna(0)
+        categories[column] = categories[column].str.replace('[^0-1]',1, regex=True)
     
-    # convert column from string to numeric
+    # convert category column values from string to numeric
         categories[column] = categories[column].astype(int)
         
     # drop the original categories column from `df`
