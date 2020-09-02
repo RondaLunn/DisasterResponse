@@ -1,4 +1,5 @@
 import sys
+import re
 import pandas as pd
 from sqlalchemy import create_engine
 
@@ -35,7 +36,7 @@ def load_data(messages_filepath, categories_filepath):
         
     # replace all category column null values with 0 and any other non-binary characters with 1
         categories[column] = categories[column].fillna(0)
-        categories[column] = categories[column].str.replace('[^0-1]',1, regex=True)
+        categories[column] = categories[column].str.replace(r'[^0-1]', '1', regex=True)
     
     # convert category column values from string to numeric
         categories[column] = categories[column].astype(int)
